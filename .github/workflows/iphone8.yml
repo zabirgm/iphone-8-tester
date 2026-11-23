@@ -4,13 +4,15 @@ on:
 
 jobs:
   live-iphone:
-    runs-on: macos-13
+    runs-on: macos-15
     timeout-minutes: 60
     steps:
-      - name: Enable VNC & Boot iPhone 8 (iOS 16)
+      - name: Enable VNC & Boot iPhone 8
         run: |
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvnclegacy -vnclegacy yes -clientopts -setvncpw -vncpw "test1234" -restart -agent -privs -all
-          open -a Simulator --args -CurrentDeviceUDID $(xcrun simctl list devices available | grep "iPhone 8 (" | head -n 1 | awk -F '[()]' '{print $2}')
+          RUNTIME=$(xcrun simctl list runtimes available | grep "iOS" | tail -n 1 | awk -F '[()]' '{print $(NF-1)}')
+          UDID=$(xcrun simctl create "My-iPhone-8" "com.apple.CoreSimulator.SimDeviceType.iPhone-8" "$RUNTIME")
+          open -a Simulator --args -CurrentDeviceUDID "$UDID"
 
       - name: Start Free Cloudflare Tunnel
         run: |
