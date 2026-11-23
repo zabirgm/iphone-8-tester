@@ -1,0 +1,25 @@
+name: Live Interactive iPhone 8
+on:
+  workflow_dispatch:
+
+jobs:
+  live-iphone:
+    runs-on: macos-13
+    timeout-minutes: 60
+    steps:
+      - name: Enable VNC & Boot iPhone 8 (iOS 16)
+        run: |
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvnclegacy -vnclegacy yes -clientopts -setvncpw -vncpw "test1234" -restart -agent -privs -all
+          open -a Simulator --args -CurrentDeviceUDID $(xcrun simctl list devices available | grep "iPhone 8 (" | head -n 1 | awk -F '[()]' '{print $2}')
+
+      - name: Start Free Cloudflare Tunnel
+        run: |
+          brew install cloudflared
+          cloudflared tunnel --url tcp://localhost:5900 > tunnel.log 2>&1 &
+          sleep 8
+          echo "=========================================="
+          echo "YOUR TUNNEL URL IS BELOW:"
+          grep -o "https://[a-zA-Z0-9-]*\.trycloudflare\.com" tunnel.log | head -n 1
+          echo "VNC PASSWORD: test1234"
+          echo "=========================================="
+          sleep 3500
