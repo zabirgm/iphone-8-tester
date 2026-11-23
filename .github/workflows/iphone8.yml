@@ -19,9 +19,10 @@ jobs:
 
       - name: Start Browser VNC (noVNC) + Cloudflare Tunnel
         run: |
-          brew install cloudflared websockify
+          brew install cloudflared
           GH="https://github.com"
           git clone --depth 1 "$GH/novnc/noVNC.git"
+          git clone --depth 1 "$GH/novnc/websockify.git" noVNC/utils/websockify
           ./noVNC/utils/novnc_proxy --vnc localhost:5900 --listen 6080 > novnc.log 2>&1 &
           cloudflared tunnel --url http://localhost:6080 > tunnel.log 2>&1 &
           sleep 10
