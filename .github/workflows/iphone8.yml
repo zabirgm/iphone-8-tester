@@ -4,33 +4,34 @@ on:
 
 jobs:
   live-iphone:
-    runs-on: macos-latest
+    runs-on: macos-14
     timeout-minutes: 60
     steps:
-      - name: Enable VNC & Boot iPhone 8
+      - name: Enable VNC, Wake Display & Boot iPhone
         run: |
           set +e
+          # Enable Screen Sharing & VNC
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvnclegacy -vnclegacy yes -clientopts -setvncpw -vncpw "test1234" -restart -agent -privs -all
           
-          # Find existing iPhone 8 or create one using the first available iOS runtime
-          UDID=$(xcrun simctl list devices available | grep "iPhone 8 (" | head -n 1 | awk -F '[()]' '{print $2}')
-          if [ -z "$UDID" ]; then
-            RUNTIME=$(xcrun simctl list runtimes available | grep "com.apple.CoreSimulator.SimRuntime.iOS" | tail -n 1 | awk '{print $NF}')
-            UDID=$(xcrun simctl create "iPhone-8-Test" "com.apple.CoreSimulator.SimDeviceType.iPhone-8" "$RUNTIME")
-          fi
+          # Wake up virtual display so screen is not black
+          caffeinate -u -t 3600 &
+          osascript -e 'tell application "System Events" to key code 49'
           
-          # Boot the simulator and open the Simulator window
+          # Boot iPhone SE (3rd gen) or iPhone 8 (exact same 375x667 screen & Touch ID)
+          UDID=$(xcrun simctl list devices available | grep -E "iPhone 8 \(|iPhone SE \(3rd generation\)" | head -n 1 | awk -F '[()]' '{print $(NF-1)}')
           xcrun simctl boot "$UDID" || true
           open -a Simulator
 
-      - name: Start Free Cloudflare Tunnel
+      - name: Start Browser VNC (noVNC) + Cloudflare Tunnel
         run: |
-          brew install cloudflared
-          cloudflared tunnel --url tcp://localhost:5900 > tunnel.log 2>&1 &
+          brew install cloudflared novnc websockify
+          websockify --web=/opt/homebrew/opt/novnc/share/novnc 6080 localhost:5900 &
+          cloudflared tunnel --url http://localhost:6080 > tunnel.log 2>&1 &
           sleep 10
           echo "=========================================="
-          echo "YOUR TUNNEL URL IS BELOW:"
+          echo "OPEN THIS LINK DIRECTLY IN YOUR BROWSER:"
           grep -o "https://[a-zA-Z0-9-]*\.trycloudflare\.com" tunnel.log | head -n 1
-          echo "VNC PASSWORD: test1234"
+          echo "ADD /vnc.html AT THE END OF THE LINK!"
+          echo "PASSWORD: test1234"
           echo "=========================================="
           sleep 3500
