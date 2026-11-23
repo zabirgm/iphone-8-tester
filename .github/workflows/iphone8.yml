@@ -13,29 +13,22 @@ jobs:
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvnclegacy -vnclegacy yes -clientopts -setvncpw -vncpw "test1234" -restart -agent -privs -all
           caffeinate -u -t 3600 &
           osascript -e 'tell application "System Events" to key code 49'
-          
-          # Boot iPhone SE (3rd gen) or iPhone 8 (same 375x667 screen & Touch ID)
           UDID=$(xcrun simctl list devices available | grep -E "iPhone 8 \(|iPhone SE \(3rd generation\)" | head -n 1 | awk -F '[()]' '{print $(NF-1)}')
           xcrun simctl boot "$UDID" || true
           open -a Simulator
 
       - name: Start Browser VNC (noVNC) + Cloudflare Tunnel
         run: |
-          # Download cloudflared & noVNC directly (starts in ~10 seconds!)
-          curl -L -s https://github.com | tar -xz
-          chmod +x cloudflared
-          git clone --depth 1 https://github.com
-          git clone --depth 1 https://github.com noVNC/utils/websockify
-          
-          # Start noVNC web server on port 6080 & tunnel it
+          brew install cloudflared websockify
+          GH="https://github.com"
+          git clone --depth 1 "$GH/novnc/noVNC.git"
           ./noVNC/utils/novnc_proxy --vnc localhost:5900 --listen 6080 > novnc.log 2>&1 &
-          ./cloudflared tunnel --url http://localhost:6080 > tunnel.log 2>&1 &
-          sleep 8
-          
+          cloudflared tunnel --url http://localhost:6080 > tunnel.log 2>&1 &
+          sleep 10
           echo "=========================================="
           echo "OPEN THIS LINK IN YOUR BROWSER:"
           grep -o "https://[a-zA-Z0-9-]*\.trycloudflare\.com" tunnel.log | head -n 1
-          echo "ADD /vnc.html TO THE END OF THE URL!"
+          echo "ADD /vnc.html AT THE END OF THE URL!"
           echo "PASSWORD: test1234"
           echo "=========================================="
           sleep 3500
