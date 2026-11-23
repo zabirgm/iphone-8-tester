@@ -10,6 +10,7 @@ jobs:
       - name: Enable VNC, Wake Display & Boot iPhone
         run: |
           set +e
+          sudo dscl . -passwd /Users/runner "test1234"
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvnclegacy -vnclegacy yes -clientopts -setvncpw -vncpw "test1234" -restart -agent -privs -all
           caffeinate -u -t 3600 &
           osascript -e 'tell application "System Events" to key code 49'
@@ -30,6 +31,6 @@ jobs:
           echo "OPEN THIS LINK IN YOUR BROWSER:"
           grep -o "https://[a-zA-Z0-9-]*\.trycloudflare\.com" tunnel.log | head -n 1
           echo "ADD /vnc.html AT THE END OF THE URL!"
-          echo "PASSWORD: test1234"
+          echo "USERNAME: runner | PASSWORD: test1234"
           echo "=========================================="
           sleep 3500
