@@ -4,21 +4,30 @@ on:
 
 jobs:
   live-iphone:
-    runs-on: macos-15
+    runs-on: macos-latest
     timeout-minutes: 60
     steps:
       - name: Enable VNC & Boot iPhone 8
         run: |
+          set +e
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvnclegacy -vnclegacy yes -clientopts -setvncpw -vncpw "test1234" -restart -agent -privs -all
-          RUNTIME=$(xcrun simctl list runtimes available | grep "iOS" | tail -n 1 | awk -F '[()]' '{print $(NF-1)}')
-          UDID=$(xcrun simctl create "My-iPhone-8" "com.apple.CoreSimulator.SimDeviceType.iPhone-8" "$RUNTIME")
-          open -a Simulator --args -CurrentDeviceUDID "$UDID"
+          
+          # Find existing iPhone 8 or create one using the first available iOS runtime
+          UDID=$(xcrun simctl list devices available | grep "iPhone 8 (" | head -n 1 | awk -F '[()]' '{print $2}')
+          if [ -z "$UDID" ]; then
+            RUNTIME=$(xcrun simctl list runtimes available | grep "com.apple.CoreSimulator.SimRuntime.iOS" | tail -n 1 | awk '{print $NF}')
+            UDID=$(xcrun simctl create "iPhone-8-Test" "com.apple.CoreSimulator.SimDeviceType.iPhone-8" "$RUNTIME")
+          fi
+          
+          # Boot the simulator and open the Simulator window
+          xcrun simctl boot "$UDID" || true
+          open -a Simulator
 
       - name: Start Free Cloudflare Tunnel
         run: |
           brew install cloudflared
           cloudflared tunnel --url tcp://localhost:5900 > tunnel.log 2>&1 &
-          sleep 8
+          sleep 10
           echo "=========================================="
           echo "YOUR TUNNEL URL IS BELOW:"
           grep -o "https://[a-zA-Z0-9-]*\.trycloudflare\.com" tunnel.log | head -n 1
