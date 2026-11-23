@@ -10,8 +10,14 @@ jobs:
       - name: Enable VNC, Wake Display & Boot iPhone
         run: |
           set +e
+          # Set macOS user password properly via sysadminctl & dscl
+          sudo sysadminctl -resetPasswordFor runner -newPassword "test1234"
           sudo dscl . -passwd /Users/runner "test1234"
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvnclegacy -vnclegacy yes -clientopts -setvncpw -vncpw "test1234" -restart -agent -privs -all
+          
+          # Enable standard VNC access without Apple proprietary encryption
+          sudo defaults write /Library/Preferences/com.apple.RemoteManagement.plist VNCAlwaysStartOnConsole -bool true
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -users runner -privs -all -clientopts -setvnclegacy -vnclegacy yes -clientopts -setvncpw -vncpw "test1234" -restart -agent
+          
           caffeinate -u -t 3600 &
           osascript -e 'tell application "System Events" to key code 49'
           UDID=$(xcrun simctl list devices available | grep -E "iPhone 8 \(|iPhone SE \(3rd generation\)" | head -n 1 | awk -F '[()]' '{print $(NF-1)}')
